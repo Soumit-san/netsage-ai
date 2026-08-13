@@ -31,4 +31,3 @@ Run the app:
 ```bash
 streamlit run app.py
 ```
->>>>>>> cb70efe (Initial commit: NetSage AI Troubleshooting Assistant)
