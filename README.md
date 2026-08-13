@@ -1,6 +1,4 @@
-<<<<<<< HEAD
-# netsage-ai
-=======
+
 # NetSage AI
 
 AI Troubleshooting Assistant for Cisco-Style Lab Networks with Mandatory Human Review.
