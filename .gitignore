@@ -1,0 +1,7 @@
+# .gitignore
+__pycache__/
+*.pyc
+.env
+output.txt
+read_docx.py
+generate_cases.py

@@ -1,0 +1,189 @@
+case_id,symptom,topology_note,show_output,expected_fault,osi_layer,concept_tag,severity
+CASE-001,PC cannot ping its default gateway. Link light is green.,"PC is on switchport Fa0/1, should be in VLAN 10 (Sales).","Switch# show vlan brief
+VLAN Name                             Status    Ports
+---- -------------------------------- --------- -------------------------------
+1    default                          active    Fa0/1, Fa0/2, Fa0/3
+10   Sales                            active    
+20   Engineering                      active    ",Port Fa0/1 is in the default VLAN (1) instead of VLAN 10.,Layer 2,VLAN,High
+CASE-002,PC1 in VLAN 20 cannot communicate with PC2 in VLAN 20 on another switch.,Switches are connected via Gi0/1.,"Switch1# show interfaces trunk
+
+Port        Mode         Encapsulation  Status        Native vlan
+Gi0/1       on           802.1q         trunking      1
+
+Port        Vlans allowed on trunk
+Gi0/1       1-19,21-1005
+
+Port        Vlans in spanning tree forwarding state and not pruned
+Gi0/1       1",VLAN 20 is not allowed on the trunk link Gi0/1.,Layer 2,VLAN,Medium
+CASE-003,New PC on Fa0/5 cannot communicate on network.,Should be in VLAN 30.,"Switch# show interfaces status
+
+Port      Name               Status       Vlan       Duplex  Speed Type
+Fa0/5                        connected    1          a-full  a-100 10/100BaseTX",Port Fa0/5 is assigned to VLAN 1 instead of VLAN 30.,Layer 2,VLAN,Low
+CASE-004,Users on switch 2 complain of intermittent connectivity to VLAN 10.,Native VLAN mismatch suspected between Switch 1 and 2.,"Switch1# show interfaces Gi0/1 trunk
+
+Port        Mode         Encapsulation  Status        Native vlan
+Gi0/1       on           802.1q         trunking      99
+
+Switch2# show interfaces Gi0/1 trunk
+
+Port        Mode         Encapsulation  Status        Native vlan
+Gi0/1       on           802.1q         trunking      1","Native VLAN mismatch (99 on Sw1, 1 on Sw2).",Layer 2,VLAN,High
+CASE-005,PC can ping other PCs in same subnet but cannot reach internet.,PC IP: 192.168.1.50/24. Router IP: 192.168.1.1/24.,"C:\> ipconfig
+
+Ethernet adapter Ethernet:
+   IPv4 Address. . . . . . . . . . . : 192.168.1.50
+   Subnet Mask . . . . . . . . . . . : 255.255.255.0
+   Default Gateway . . . . . . . . . : 192.168.2.1",Default gateway is configured on a different subnet (192.168.2.1) than the PC.,Layer 3,gateway,High
+CASE-006,Router cannot route traffic for VLAN 10.,Router on a stick configuration. Router interface Gi0/0.10.,"Router# show ip interface brief
+Interface                  IP-Address      OK? Method Status                Protocol
+GigabitEthernet0/0         unassigned      YES unset  administratively down down
+GigabitEthernet0/0.10      10.0.10.1       YES manual administratively down down",Physical interface Gi0/0 is administratively down.,Layer 1,gateway,Critical
+CASE-007,Hosts in VLAN 20 cannot reach the gateway.,Router subinterface Gi0/0.20 IP is 10.0.20.1/24.,"Router# show run interface Gi0/0.20
+Building configuration...
+
+interface GigabitEthernet0/0.20
+ encapsulation dot1Q 30
+ ip address 10.0.20.1 255.255.255.0","Subinterface encapsulation dot1Q is set to VLAN 30, but IP belongs to VLAN 20.",Layer 2,gateway,High
+CASE-008,Server cannot respond to requests from other subnets.,Server IP is 172.16.0.100/24.,"LinuxServer$ ip route
+172.16.0.0/24 dev eth0 proto kernel scope link src 172.16.0.100",Missing default gateway route on the server.,Layer 3,gateway,High
+CASE-009,PC receives an APIPA address (169.254.x.x).,DHCP server is on a different subnet (192.168.10.10). Router interface Gi0/1 connects to PC's VLAN.,"Router# show run interface Gi0/1
+Building configuration...
+
+interface GigabitEthernet0/1
+ ip address 192.168.5.1 255.255.255.0
+ duplex auto
+ speed auto",Missing ip helper-address on the router interface.,Layer 3,DHCP,Medium
+CASE-010,IP address conflict reported by PC.,DHCP pool 192.168.1.0/24.,"Router# show run | section dhcp
+ip dhcp pool LAN
+ network 192.168.1.0 255.255.255.0
+ default-router 192.168.1.1
+Router# show ip dhcp conflict
+IP address        Detection method   Detection time
+192.168.1.1       Ping               Mar 01 12:00 PM",DHCP pool does not exclude the router's IP address (192.168.1.1).,Layer 3,DHCP,Medium
+CASE-011,No clients are getting IP addresses from the router.,Router is configured as DHCP server.,"Router# show run | section dhcp
+no service dhcp
+ip dhcp pool OFFICE
+ network 10.10.10.0 255.255.255.0",DHCP service is disabled globally (no service dhcp).,Layer 7,DHCP,Critical
+CASE-012,Clients get IPs but cannot resolve hostnames.,DHCP pool config.,"Router# show run | section dhcp
+ip dhcp pool GUESTS
+ network 192.168.20.0 255.255.255.0
+ default-router 192.168.20.1",Missing dns-server configuration in the DHCP pool.,Layer 3,DHCP,Medium
+CASE-013,PC can ping 8.8.8.8 but cannot ping google.com.,PC network settings.,"C:\> ipconfig /all
+
+Ethernet adapter Ethernet:
+   IPv4 Address. . . . . . . . . . . : 192.168.1.15
+   Subnet Mask . . . . . . . . . . . : 255.255.255.0
+   Default Gateway . . . . . . . . . : 192.168.1.1
+   DNS Servers . . . . . . . . . . . : 127.0.0.1",Incorrect DNS server configured on the client (loopback).,Layer 7,DNS,Medium
+CASE-014,Router cannot resolve internal hostnames.,Router trying to ping Server1.,"Router# show run | include dns
+no ip domain-lookup
+ip name-server 8.8.8.8",DNS lookup is disabled globally (no ip domain-lookup).,Layer 7,DNS,Low
+CASE-015,Clients receive wrong DNS server from DHCP.,Expected DNS is 8.8.8.8.,"Router# show run | section dhcp
+ip dhcp pool MAIN
+ network 10.0.0.0 255.255.255.0
+ default-router 10.0.0.1
+ dns-server 10.0.0.254",DHCP pool configures the wrong DNS server (10.0.0.254).,Layer 7,DNS,Medium
+CASE-016,Internal DNS server cannot resolve external names.,Windows Server DNS.,"PS> Get-DnsServerForwarder
+
+UseRootHint        : False
+Timeout            : 3
+EnableReordering   : True
+Forwarders         : {}",No forwarders configured and root hints are disabled.,Layer 7,DNS,High
+CASE-017,Router R1 cannot reach network 10.2.0.0/24.,R1 connected to R2. R2 has network 10.2.0.0/24.,"R1# show ip route
+Gateway of last resort is not set
+
+      10.0.0.0/8 is variably subnetted, 2 subnets, 2 masks
+C        10.1.0.0/24 is directly connected, GigabitEthernet0/0
+L        10.1.0.1/32 is directly connected, GigabitEthernet0/0",Missing static or dynamic route to 10.2.0.0/24 on R1.,Layer 3,routing,High
+CASE-018,OSPF neighbor adjacency not forming between R1 and R2.,"R1 is on 192.168.12.1, R2 is on 192.168.12.2.","R1# show ip ospf interface Gi0/0
+GigabitEthernet0/0 is up, line protocol is up
+  Internet Address 192.168.12.1/24, Area 0
+  Process ID 1, Router ID 1.1.1.1, Network Type BROADCAST, Cost: 1
+  Hello 10, Dead 40
+R2# show ip ospf interface Gi0/0
+GigabitEthernet0/0 is up, line protocol is up
+  Internet Address 192.168.12.2/24, Area 0
+  Process ID 1, Router ID 2.2.2.2, Network Type BROADCAST, Cost: 1
+  Hello 5, Dead 20",OSPF Hello/Dead timer mismatch (10/40 vs 5/20).,Layer 3,routing,High
+CASE-019,Traffic to internet is dropped.,Default route required.,"R1# show run | include ip route
+ip route 0.0.0.0 0.0.0.0 Null0",Default route points to Null0 instead of the ISP next-hop.,Layer 3,routing,Critical
+CASE-020,EIGRP not advertising network 172.16.0.0.,R1 EIGRP config.,"R1# show run | section router eigrp
+router eigrp 100
+ network 192.168.1.0
+ no auto-summary",Missing 'network 172.16.0.0' statement under EIGRP process.,Layer 3,routing,Medium
+CASE-021,Users cannot access the web server (10.0.0.50) on port 80.,Router applies ACL 100 on the interface facing users.,"Router# show access-lists 100
+Extended IP access list 100
+    10 permit tcp any host 10.0.0.50 eq 443
+    20 deny ip any any (15 matches)","ACL 100 explicitly denies all IP traffic after allowing HTTPS, implicitly blocking port 80 (HTTP).",Layer 4,ACL,High
+CASE-022,SSH access to the router is failing.,VTY lines are protected by access-class.,"Router# show run | section line vty
+line vty 0 4
+ access-class 10 in
+ transport input ssh
+Router# show access-lists 10
+Standard IP access list 10
+    10 permit 192.168.1.0, wildcard bits 0.0.0.255","Admin is likely coming from a subnet other than 192.168.1.0/24 (needs verification, but ACL 10 restricts access).",Layer 4,ACL,Low
+CASE-023,No traffic passing through Gi0/1 interface.,Inbound ACL configured.,"Router# show run interface Gi0/1
+interface GigabitEthernet0/1
+ ip address 10.1.1.1 255.255.255.0
+ ip access-group 101 in
+Router# show access-lists 101
+% No such access-list","Interface has an access-group applied for an ACL (101) that does not exist. (Implicit deny all if Cisco IOS behavior dictates, or blocks all).",Layer 3,ACL,High
+CASE-024,"Ping to external server fails, but TCP works.",Outbound ACL.,"Router# show access-lists EXT_OUT
+Extended IP access list EXT_OUT
+    10 permit tcp any any
+    20 permit udp any any
+    30 deny ip any any",ICMP is not permitted in the ACL.,Layer 3,ACL,Low
+CASE-025,Internal PCs cannot browse the internet. Internal routing is fine.,NAT Overload (PAT) configured.,"Router# show ip nat statistics
+Total active translations: 0 (0 static, 0 dynamic; 0 extended)
+Outside interfaces:
+  GigabitEthernet0/0
+Inside interfaces:
+  GigabitEthernet0/1
+Hits: 0  Misses: 0
+Router# show access-lists 1
+Standard IP access list 1
+    10 permit 10.10.10.0, wildcard bits 0.0.0.255","The NAT inside source command is missing, or the ACL doesn't match the internal subnet.",Layer 3,NAT,Critical
+CASE-026,Static NAT to internal web server is not working.,"Web server IP 192.168.1.100, public IP 203.0.113.5.","Router# show run | include nat
+ip nat inside source static 192.168.1.100 203.0.113.5
+Router# show run interface Gi0/0
+interface GigabitEthernet0/0
+ description WAN
+ ip address 203.0.113.1 255.255.255.0
+Router# show run interface Gi0/1
+interface GigabitEthernet0/1
+ description LAN
+ ip address 192.168.1.1 255.255.255.0
+ ip nat inside",Missing 'ip nat outside' on the WAN interface (Gi0/0).,Layer 3,NAT,High
+CASE-027,Only some PCs can access the internet.,NAT pool configured.,"Router# show run | section nat
+ip nat pool PUBLIC 203.0.113.10 203.0.113.11 netmask 255.255.255.0
+ip nat inside source list 1 pool PUBLIC
+access-list 1 permit 192.168.1.0 0.0.0.255",Missing 'overload' keyword on the NAT statement. Pool only has 2 addresses.,Layer 3,NAT,Medium
+CASE-028,Port forwarding to server fails.,Forwarding port 8080 to 80.,"Router# show run | include nat
+ip nat inside source static tcp 192.168.1.50 80 interface GigabitEthernet0/0 8080","Wait, the command looks syntactically correct in some versions, but standard is `ip nat inside source static tcp 192.168.1.50 80 interface Gi0/0 8080`. Let's assume the fault is that the server listens on 8080 but the command translates it to 80.",Layer 4,NAT,Medium
+CASE-029,Wireless clients cannot associate with the AP.,WLC and Lightweight AP setup.,"WLC> show wlan 1
+WLAN Identifier.................................. 1
+Profile Name..................................... CorpWiFi
+Network Name (SSID).............................. CorpWiFi
+Status........................................... Disabled
+MAC Filtering.................................... Disabled",The WLAN status is Disabled.,Layer 2,wireless,Critical
+CASE-030,Client connects to WiFi but gets no IP.,SSID mapped to VLAN 50.,"Switch# show run interface Gi1/0/1
+interface GigabitEthernet1/0/1
+ description Connection to AP
+ switchport mode access
+ switchport access vlan 10","The switchport connected to the AP is an access port on VLAN 10 instead of a trunk port, or the wrong VLAN.",Layer 2,wireless,High
+CASE-031,Weak signal on clients in the conference room.,AP1 is in the conference room.,"WLC> show ap config 802.11b AP1
+Tx Power Level................................... 8 (Lowest)
+Channel.......................................... 1",AP Tx Power Level is set to the lowest setting (8).,Layer 1,wireless,Medium
+CASE-032,Clients disconnect frequently in an open office.,3 APs in close proximity.,"WLC> show ap summary
+AP Name      Slots  AP Model             Ethernet MAC       Location          Port  Country  Priority
+-------      -----  -------------------  -----------------  ----------------  ----  -------  ------
+AP1          2      AIR-CAP2702I-A-K9    00:11:22:33:44:01  Office            1     US       1
+AP2          2      AIR-CAP2702I-A-K9    00:11:22:33:44:02  Office            1     US       1
+AP3          2      AIR-CAP2702I-A-K9    00:11:22:33:44:03  Office            1     US       1
+
+WLC> show ap config 802.11b AP1
+Channel: 6
+WLC> show ap config 802.11b AP2
+Channel: 6
+WLC> show ap config 802.11b AP3
+Channel: 6",Co-channel interference (all APs on channel 6).,Layer 1,wireless,Medium
